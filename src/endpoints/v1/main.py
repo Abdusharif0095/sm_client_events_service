@@ -4,10 +4,12 @@ from lib.websocket_manager import WebsocketConnectionManager
 from lib.acl import JWTpayload
 from src.models import models
 import connections.kafka_connection as kafka
+from src.modules.v1 import websocket_response_processer as ws_rp
+
 
 router = APIRouter(prefix='/v1')
-
 manager = WebsocketConnectionManager()
+
 
 def add_log(message: str):
     with open("test_log.txt", "a") as log_file:
@@ -44,8 +46,12 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             add_log(f"Waiting for message from user {user_id}...")
             data = await websocket.receive_text()
+            headers = {
+                'x-real-ip': websocket.headers.get('x-real-ip', None)
+            }
+            await ws_rp.process_received_text(data, headers)
             add_log(f"Received message from user {user_id}: type: {type(data)}, data: {data}")
-            print(f"Received message from user {user_id}: {data}")
+            print(f"Received message from user {user_id}: {data}", flush=True)
 
     except WebSocketDisconnect as e:
         manager.disconnect(user_id)

@@ -8,7 +8,7 @@ load_dotenv('lib/configs.env')
 
 class Settings:
     PROJECT_NAME: str = "SM Client Event Service"
-    PROJECT_VERSION: str = "2.0.2"
+    PROJECT_VERSION: str = "2.0.3"
 
     KAFKA_BROKER: str = os.getenv("KAFKA_BROKER")
     ALERTS_TOPIC: str = os.getenv("ALERTS_TOPIC")
@@ -17,6 +17,7 @@ class Settings:
 
     REDIS_HOST: str = os.getenv("REDIS_HOST")
     REDIS_PORT: str = os.getenv("REDIS_PORT")
+    REDIS_PING_EXPIRE_SECONDS: int = 60
 
 
 settings = Settings()

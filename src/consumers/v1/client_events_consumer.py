@@ -159,7 +159,7 @@ async def handle_ping(event_model: models.EventModel):
         send_res = await manager.send_message_async(to_user_uuid, data)
         # get user device_uuid
         ping_device_data = await crud.get_user_device_data(to_user_uuid)
-        ping_device_uuid = ping_device_data("device_uuid", None)
+        ping_device_uuid = ping_device_data.get("device_uuid", None)
 
         if send_res == "user_not_connected":
             # add ping_response to kafka 
@@ -169,7 +169,7 @@ async def handle_ping(event_model: models.EventModel):
                 ping_device_uuid=ping_device_uuid,
                 comment="user wasn't connected"
             )
-            await kafka.send_ping_response(message["ping_uuid"], ping_response)
+            kafka.send_ping_response(message["ping_uuid"], ping_response)
         else:
             # add ping data to redis
             ping_data = models.PingData(
@@ -178,9 +178,10 @@ async def handle_ping(event_model: models.EventModel):
                 ping_device_uuid=ping_device_uuid,
                 ping_time=str(datetime.now())
             )
-            redis.add_ping_data_to_redis(ping_data.__dict__)
+            await redis.add_ping_data_to_redis(ping_data)
 
     except Exception as ws_error:
+        traceback.print_exc()
         print(f"Error sending message to WebSocket: {ws_error}", flush=True)
 
 

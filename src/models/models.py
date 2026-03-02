@@ -6,9 +6,10 @@ from typing import Any, Dict, List, Union, Optional, Annotated
 
 def validate_date(value: str):
     try:
-        datetime.formatisoformat(value)
+        datetime.strptime(value, "%Y-%m-%d %H:%M:%S.%f")
+        return value
     except Exception as e:
-        raise ValueError("datetime must be in format YYYY-MM-DDThh:mm:ss±hh:mm")
+        raise ValueError("datetime must be in format YYYY-MM-DD HH:MM:SS.MS")
 
 
 DateTime = Annotated[str, BeforeValidator(validate_date)]
@@ -20,6 +21,13 @@ class EventModel(BaseModel):
     payload: Dict[str, Union[Optional[str], Optional[int], Optional[float], Optional[bool], Optional[List[Any]], Optional[Dict]]] = Field(default_factory=dict,
                                                                                                                           description="JSON of arguments")
     
+
+class ResponseModel(BaseModel):
+    event_type: str
+    payload: Dict[str, Union[Optional[str], Optional[int], Optional[float], Optional[bool], Optional[List[Any]], Optional[Dict]]] = Field(default_factory=dict,
+                                                                                                                          description="JSON of arguments")
+
+
 
 class Layer(str, Enum):
     db = "db"
@@ -43,12 +51,12 @@ class PingData(BaseModel):
 
 
 class PingResponse(BaseModel):
-    ping_uuid: Optional[str]
-    user_uuid: Optional[str]
-    ping_device_uuid: Optional[str]
-    pong_device_uuid: Optional[str]
-    pong_ip_address: Optional[str]
-    ping_time: Optional[DateTime]
-    pong_time: Optional[DateTime]
-    ttl: int = 0 # diff in ms default 0
-    comment: Optional[str]
+    ping_uuid: Optional[str] = None
+    user_uuid: Optional[str] = None
+    ping_device_uuid: Optional[str] = None
+    pong_device_uuid: Optional[str] = None
+    pong_ip_address: Optional[str] = None
+    ping_time: Optional[DateTime] = None
+    pong_time: Optional[DateTime] = None
+    ttl: float = 0 # diff in ms default 0
+    comment: Optional[str] = None
