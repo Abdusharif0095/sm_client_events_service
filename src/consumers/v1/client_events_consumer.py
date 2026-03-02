@@ -73,6 +73,8 @@ async def process_message(msg):
             await handle_trn_message(event_model)
         elif event_model.event_type == 'notification':
             await handle_notification(event_model)
+        elif event_model.event_type == 'ping':
+            await handle_ping(event_model)
         else:
             print(f"Unsupported event type: {event_model.event_type}", flush=True)
         return "", True
@@ -142,6 +144,19 @@ async def handle_notification(event_model: EventModel):
     except Exception as ws_error:
         print(f"Error sending message to WebSocket: {ws_error}", flush=True)
         raise
+
+
+async def handle_ping(event_model: EventModel):
+    message = event_model.payload
+    try:
+        to_user_uuid = message.get("user_uuid")
+        if to_user_uuid:
+            del message["user_uuid"]
+        data = await convert_data_format(message, event_model.event_type)
+        print(f"Sending message to user: {to_user_uuid}")
+        await manager.send_message_async(to_user_uuid, data)
+    except Exception as ws_error:
+        print(f"Error sending message to WebSocket: {ws_error}", flush=True)
 
 
 async def convert_data_format(data, event_type):
