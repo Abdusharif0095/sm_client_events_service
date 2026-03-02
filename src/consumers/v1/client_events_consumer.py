@@ -4,21 +4,21 @@ import traceback
 from typing import Dict
 from datetime import datetime
 
+import connections.redis_connection as redis
 import connections.kafka_connection as kafka
 from kafka import TopicPartition, OffsetAndMetadata
 
-
+from src.models import models
+from lib.config import settings
 from src.modules.v1 import crud
-from src.models.models import Alert
-from src.models.models import EventModel
 from src.endpoints.v1.main import manager
 from src.producers.alert_producer import AlertProducer
 
 
 async def run():
     consumer = kafka.get_consumer(
-        topic='client_events_topic',
-        group_id='client_events_senders',
+        topic=settings.CLIENT_EVENTS_TOPIC,
+        group_id=f'{settings.CLIENT_EVENTS_TOPIC}_SENDERS',
         auto_offset_reset='earliest',
         enable_auto_commit=False,
     )
@@ -40,7 +40,7 @@ async def run():
                         producer = AlertProducer()
                         await producer.start()
                         try:
-                            alert = Alert(
+                            alert = models.Alert(
                                 layer="python",
                                 service="Client event Service",
                                 function="client_event_consumer.run",
@@ -65,7 +65,7 @@ async def process_message(msg):
     try:
         print("Received message:", msg, flush=True)
         json_value = json.loads(msg.value)
-        event_model = EventModel(**json_value)
+        event_model = models.EventModel(**json_value)
 
         if event_model.event_type == 'chat_msg':
             await handle_chat_message(event_model)
@@ -90,7 +90,7 @@ async def process_message(msg):
         return f"Client Events Consumer: Exception was caught: {ex}", False
 
 
-async def handle_chat_message(event_model: EventModel):
+async def handle_chat_message(event_model: models.EventModel):
     message = event_model.payload
     try:
         to_user_id = message.get('to_user_id')
@@ -118,7 +118,7 @@ async def handle_chat_message(event_model: EventModel):
         raise
 
 
-async def handle_trn_message(event_model: EventModel):
+async def handle_trn_message(event_model: models.EventModel):
     message = event_model.payload
     try:
         to_user_id = message.get('user_uuid')
@@ -132,7 +132,7 @@ async def handle_trn_message(event_model: EventModel):
         raise
 
 
-async def handle_notification(event_model: EventModel):
+async def handle_notification(event_model: models.EventModel):
     message = event_model.payload
     try:
         to_user_id = message.get('user_uuid')
@@ -146,7 +146,7 @@ async def handle_notification(event_model: EventModel):
         raise
 
 
-async def handle_ping(event_model: EventModel):
+async def handle_ping(event_model: models.EventModel):
     message = event_model.payload
     try:
         to_user_uuid = message.get("user_uuid")
@@ -154,7 +154,32 @@ async def handle_ping(event_model: EventModel):
             del message["user_uuid"]
         data = await convert_data_format(message, event_model.event_type)
         print(f"Sending message to user: {to_user_uuid}")
-        await manager.send_message_async(to_user_uuid, data)
+        
+        # try send data to user
+        send_res = await manager.send_message_async(to_user_uuid, data)
+        # get user device_uuid
+        ping_device_data = await crud.get_user_device_data(to_user_uuid)
+        ping_device_uuid = ping_device_data("device_uuid", None)
+
+        if send_res == "user_not_connected":
+            # add ping_response to kafka 
+            ping_response = models.PingResponse(
+                ping_uuid=message["ping_uuid"],
+                user_uuid=to_user_uuid,
+                ping_device_uuid=ping_device_uuid,
+                comment="user wasn't connected"
+            )
+            await kafka.send_ping_response(message["ping_uuid"], ping_response)
+        else:
+            # add ping data to redis
+            ping_data = models.PingData(
+                ping_uuid=message["ping_uuid"],
+                user_uuid=to_user_uuid,
+                ping_device_uuid=ping_device_uuid,
+                ping_time=str(datetime.now())
+            )
+            redis.add_ping_data_to_redis(ping_data.__dict__)
+
     except Exception as ws_error:
         print(f"Error sending message to WebSocket: {ws_error}", flush=True)
 

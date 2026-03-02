@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, st
 from lib.websocket_manager import WebsocketConnectionManager
 from lib.acl import JWTpayload
 from src.models import models
-import connections.kafka_producer as kafka_producer
+import connections.kafka_connection as kafka
 
 router = APIRouter(prefix='/v1')
 
@@ -16,7 +16,7 @@ def add_log(message: str):
 
 @router.post('/send_event')
 async def send_sms(user_id: str, request: models.EventModel):
-    kafka_producer.send_client_event(user_id, request)
+    kafka.send_client_event(user_id, request)
     return "ok"
 
 
