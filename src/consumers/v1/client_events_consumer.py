@@ -75,6 +75,8 @@ async def process_message(msg):
             await handle_notification(event_model)
         elif event_model.event_type == 'ping':
             await handle_ping(event_model)
+        elif event_model.event_type == 'cardbind':
+            await handle_notification(event_model)
         else:
             print(f"Unsupported event type: {event_model.event_type}", flush=True)
         return "", True

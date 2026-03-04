@@ -8,7 +8,7 @@ load_dotenv('lib/configs.env')
 
 class Settings:
     PROJECT_NAME: str = "SM Client Event Service"
-    PROJECT_VERSION: str = "2.0.3"
+    PROJECT_VERSION: str = "2.0.4"
 
     KAFKA_BROKER: str = os.getenv("KAFKA_BROKER")
     ALERTS_TOPIC: str = os.getenv("ALERTS_TOPIC")
